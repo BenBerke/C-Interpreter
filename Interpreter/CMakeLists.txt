@@ -5,4 +5,6 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(CLion_Projects lexer.c
         Headers/Tokens.h
+        parser.c
+        Headers/Parser.h
 )

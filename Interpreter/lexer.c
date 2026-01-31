@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "Headers/Tokens.h"
+#include "Headers/Parser.h"
 
 int main(void) {
     Token *tokenList = malloc(sizeof(Token));
@@ -82,6 +83,10 @@ int main(void) {
             *(tokenList + listSize) = newToken;
         }
     }
+
+    Parser parser;
+    init_parser(&parser, tokenList, listSize);
+    print_tokens(&parser);
 
     free(tokenList);
     free(string);
