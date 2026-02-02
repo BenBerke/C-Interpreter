@@ -4,15 +4,12 @@ typedef enum {
     EQL,
     PLUS,
     MINUS,
-
     NUMBER,
-
     PRINT,
     VAR,
 } Type;
 
 typedef struct {
-    char *name;
     Type type;
     union {
         int i_value;

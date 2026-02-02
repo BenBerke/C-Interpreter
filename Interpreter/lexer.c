@@ -4,93 +4,103 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "Headers/Tokens.h"
-#include "Headers/Parser.h"
+#include "Headers/Token.h"
 
 int main(void) {
-    Token *tokenList = malloc(sizeof(Token));
-    Token *temp_tokenList = tokenList;
-    int listSize = 0;
+    int rc = 0;
+    Token *tokenList = NULL;
+    int listLength = 0;
 
-    char ch;
+    int ch;
     FILE *fptr = fopen("source.txt", "r");
-    if (fptr == NULL) perror("Error opening the file\n");
+    if (fptr == NULL) {
+        perror("Error opening the file\n");
+        rc = 1;
+        goto cleanup;
+    }
 
-    char *string = malloc(1);
-    char *temp_string = string;
-    int count = 0;
+    char *string = NULL;
+    int len = 0;
     while ((ch = fgetc(fptr)) != EOF) {
-        count++;
-        string = realloc(temp_string, count);
-        temp_string = string;
-        *(string + count - 1) = ch;
+        char* p = realloc(string, len + 2);
+        if (!p) { rc = 1; goto cleanup; }
+        string = p;
+        string[len++] = (char)ch;
     }
-
-    for (int i = 0; i < count; i++) {
-        tokenList = realloc(temp_tokenList, sizeof(Token));
-        temp_tokenList = tokenList;
-        Token newToken;
-        char isValid = 0;
-        char c = *(string + i);
-        if (97 <= tolower(c) && tolower(c) <= 122) {
-            int current_char = 0;
-            char *word = malloc(1);
-            char *temp_word = word;
-            while (i + current_char < count && !isspace(*(string + i + current_char))) {
-                *(word + current_char) = *(string + i + current_char);
-                current_char++;
-                word = realloc(temp_word, current_char);
-                temp_word = word;
+    if (string) {
+        string[len] = '\0';
+        for (int i = 0; i < len; i++) {
+            if (isalpha((unsigned char)string[i])) {
+                char *current_word = NULL;
+                int word_len = 0;
+                while (i < len && !isspace((unsigned char)string[i]) && string[i] != '\0' && isalpha((unsigned char)string[i])) {
+                    char *p = realloc(current_word, word_len+2);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    current_word = p;
+                    current_word[word_len++] = string[i++];
+                    current_word[word_len] = '\0';;
+                }
+                if (current_word && !strcmp(current_word, "print")) {
+                    Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    tokenList = p;
+                    tokenList[listLength].type = PRINT;
+                    tokenList[listLength].literal.s_value = NULL;
+                    listLength++;
+                }
+                else if (current_word && !strcmp(current_word, "variable")) {
+                    Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    tokenList = p;
+                    tokenList[listLength].type = VAR;
+                    tokenList[listLength].literal.s_value = NULL;
+                    listLength++;
+                }
+                i--;
+                free(current_word);
             }
-            *(word + current_char) = '\0';
-            if (strcmp(word, "print") == 0) {
-                isValid = 1;
-                newToken.type = PRINT;
+            else if (isdigit((unsigned char)string[i])) {
+                char *current_word = NULL;
+                int word_len = 0;
+                while (i < len && !isspace((unsigned char)string[i]) && string[i] != '\0' && isdigit((unsigned char)string[i])) {
+                    char *p = realloc(current_word, word_len+2);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    current_word = p;
+                    current_word[word_len++] = string[i++];
+                    current_word[word_len] = '\0';;
+                }
+                if (!current_word) { rc = 1; goto cleanup; }
+                Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                if (!p) { free(current_word); rc = 1; goto cleanup; }
+                tokenList = p;
+                tokenList[listLength].type = NUMBER;
+                tokenList[listLength].literal.i_value = atoi(current_word);
+                listLength++;
+                i--;
+                free(current_word);
             }
-            else if (strcmp(word, "variable") == 0) {
-                isValid = 1;
-                newToken.type = VAR;
+            else if (ispunct((unsigned char)string[i])) {
+                switch (string[i]) {
+                    case '+': printf("plus found"); break;
+                    case '-': printf("minus found"); break;
+                    default: break;
+                }
             }
-            i += current_char;
-            free(word);
-        }
-        else if (48 <= c && c <= 57) {
-            int current_char = 0;
-            char *word = malloc(1);
-            char *temp_word = word;
-            while (i + current_char < count && !isspace(*(string + i + current_char))) {
-                *(word + current_char) = *(string + i + current_char);
-                current_char++;
-                word = realloc(temp_word, current_char);
-                temp_word = word;
-            }
-            isValid = 1;
-            i += current_char;
-            *(word + current_char) = '\0';
-            newToken.type = NUMBER;
-            newToken.literal.i_value = atoi(word);
-            free(word);
-        }
-        else {
-            switch(c) {
-                case '=': newToken.type = EQL; isValid = 1; break;
-                case '+': newToken.type = PLUS; isValid = 1; break;
-                case '-': newToken.type = MINUS; isValid = 1; break;
-            }
-        }
-        listSize++;
-        if (isValid == 1) {
-            *(tokenList + listSize) = newToken;
         }
     }
-
-    Parser parser;
-    init_parser(&parser, tokenList, listSize);
-    print_tokens(&parser);
+    for (int i = 0; i < listLength; i++) {
+        if (tokenList[i].type == PRINT) printf("PRINT\n");
+        else if (tokenList[i].type == VAR) printf("VAR\n");
+        else if (tokenList[i].type == NUMBER) printf("NUMBER(%d)\n", tokenList[i].literal.i_value);
+    }
+    cleanup:
+    if (tokenList)
+        for (int i = 0; i < listLength; i++)
+            if (tokenList[i].type == VAR || tokenList[i].type == PRINT)
+                free(tokenList[i].literal.s_value);
 
     free(tokenList);
+    if (fptr) fclose(fptr);
     free(string);
-    rewind(fptr);
-    fclose(fptr);
-    return 0;
+    return rc;
 }

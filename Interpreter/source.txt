@@ -1,1 +1,1 @@
-print variable
+print 15 variable print
