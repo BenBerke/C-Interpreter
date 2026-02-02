@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "Headers/Token.h"
+#include "Headers/Parser.h"
 
 int main(void) {
     int rc = 0;
@@ -27,6 +28,7 @@ int main(void) {
         string = p;
         string[len++] = (char)ch;
     }
+
     if (string) {
         string[len] = '\0';
         for (int i = 0; i < len; i++) {
@@ -79,24 +81,26 @@ int main(void) {
                 i--;
                 free(current_word);
             }
-            else if (ispunct((unsigned char)string[i])) {
+            else if (strchr("+-", (unsigned char)string[i])) {
+                Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                tokenList = p;
                 switch (string[i]) {
-                    case '+': printf("plus found"); break;
-                    case '-': printf("minus found"); break;
+                    case '+': tokenList[listLength].type = PLUS; break;
+                    case '-': tokenList[listLength].type = MINUS; break;
                     default: break;
                 }
+                tokenList[listLength].literal.s_value = NULL;
+                listLength++;
             }
         }
     }
-    for (int i = 0; i < listLength; i++) {
-        if (tokenList[i].type == PRINT) printf("PRINT\n");
-        else if (tokenList[i].type == VAR) printf("VAR\n");
-        else if (tokenList[i].type == NUMBER) printf("NUMBER(%d)\n", tokenList[i].literal.i_value);
-    }
+
+    init_parser(tokenList, listLength);
+
     cleanup:
     if (tokenList)
         for (int i = 0; i < listLength; i++)
-            if (tokenList[i].type == VAR || tokenList[i].type == PRINT)
+            if (tokenList[i].type == VAR || tokenList[i].type == PRINT || tokenList[i].type == PLUS || tokenList[i].type == MINUS)
                 free(tokenList[i].literal.s_value);
 
     free(tokenList);
