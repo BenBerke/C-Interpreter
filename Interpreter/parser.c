@@ -15,6 +15,18 @@ typedef enum {
     LITERAL
 } ExprType;
 
+typedef enum {
+    STMT_EXPRESSION,
+    STMT_PRINT
+} StmtType;
+
+struct Statement {
+    StmtType type;
+    union {
+        struct Expression* expression;
+    } as;
+};
+
 struct Expression {
     ExprType type;
     union {
@@ -30,10 +42,15 @@ struct Expression {
     } as;
 };
 
+struct Program {
+    Statement** statements;
+    int count;
+};
+
 static const Token *peek(Parser *p)     { return &p->tokens[p->current]; }
 static const Token *previous(Parser *p) { return &p->tokens[p->current - 1]; }
 static int is_at_end(Parser *p)         { return p->current >= p->count || p->tokens[p->current].type == EF;}
-static const Token *advance(Parser *p)  { if (!is_at_end(p)) p->current++; return previous(p); }
+static const Token *consume(Parser *p)  { if (!is_at_end(p)) p->current++; return previous(p); }
 
 void print_list(const Token* tokenList, const int listLength) {
     for (int i = 0; i < listLength; i++) {
@@ -46,6 +63,8 @@ void print_list(const Token* tokenList, const int listLength) {
         else if (tokenList[i].type == STAR) printf("STAR");
         else if (tokenList[i].type == EF) printf("EOF");
         else if (tokenList[i].type == SLASH) printf("SLASH");
+        else if (tokenList[i].type == LEFT_PAR) printf("LEFT PARENTHESIS");
+        else if (tokenList[i].type == RIGHT_PAR) printf("RIGHT PARENTHESIS");
         printf("\n");
     }
 }
@@ -54,7 +73,7 @@ Expression* factor(Parser *p) {
     if (peek(p)->type == NUMBER) {
         Expression *expr = malloc(sizeof(struct Expression));
         expr->type = LITERAL;
-        expr->as.literal.value = advance(p);
+        expr->as.literal.value = consume(p);
         return expr;
     }
     return NULL;
@@ -63,7 +82,7 @@ Expression* factor(Parser *p) {
 Expression* multiplication(Parser *p) {
     Expression *expr = factor(p);
     while (peek(p)->type == STAR || peek(p)->type == SLASH) {
-        const Token* op = advance(p);
+        const Token* op = consume(p);
         Expression *right = factor(p);
         Expression *new_node = malloc(sizeof(struct Expression));
         new_node->type = BINARY;
@@ -78,7 +97,7 @@ Expression* multiplication(Parser *p) {
 Expression* addition(Parser *p) {
     Expression *expr = multiplication(p);
     while (peek(p)->type == PLUS || peek(p)->type == MINUS) {
-        const Token* op = advance(p);
+        const Token* op = consume(p);
         Expression *right = multiplication(p);
         Expression *new_node = malloc(sizeof(struct Expression));
         new_node->type = BINARY;
@@ -90,19 +109,29 @@ Expression* addition(Parser *p) {
     return expr;
 }
 
-Expression* parse(Parser *p) {
-    Expression* expr = addition(p);
-    if (peek(p)->type == SEMICOLON) advance(p);
+Statement* parse(Parser *p) {
+    Statement* stmt = malloc(sizeof(struct Statement));
+    Expression* expr = NULL;
+    if (peek(p)->type == PRINT) {
+        consume(p);
+        expr = addition(p);
+        stmt->type = STMT_PRINT;
+    } else {
+        expr = addition(p);
+        stmt->type = STMT_EXPRESSION;
+    }
+    stmt->as.expression = expr;
+    if (peek(p)->type == SEMICOLON) consume(p);
     else if (peek(p)->type != EF) perror("; expected after an expression");
-    return expr;
+    return stmt;
 }
 
-int evaluate(const Expression *expr) {
+int evaluate_expression(Expression *expr) {
     if (expr == NULL) return 0;
     if (expr->type == LITERAL) return expr->as.literal.value->literal.i_value;
     if (expr->type == BINARY) {
-        const int left = evaluate(expr->as.binary.left);
-        const int right = evaluate(expr->as.binary.right);
+        const int left = evaluate_expression(expr->as.binary.left);
+        const int right = evaluate_expression(expr->as.binary.right);
         switch (expr->as.binary.op->type) {
             case PLUS: return left + right;
             case MINUS: return left - right;
@@ -114,23 +143,41 @@ int evaluate(const Expression *expr) {
     return 0;
 }
 
+int evaluate_statement(const Statement *stmt) {
+    if (stmt == NULL) return 0;
+    if (stmt->type == STMT_EXPRESSION) return evaluate_expression(stmt->as.expression);
+    if (stmt->type == STMT_PRINT) printf("%d\n", evaluate_expression(stmt->as.expression));
+
+    return 0;
+}
+
 void free_expression(Expression *expr) {
     if (expr == NULL) return;
     if (expr->type == BINARY) {
-        free(expr->as.binary.left);
-        free(expr->as.binary.right);
+        free_expression(expr->as.binary.left);
+        free_expression(expr->as.binary.right);
     }
     free(expr);
 }
 
+void free_statement(Statement *stmt) {
+    if (stmt == NULL) return;
+    if (stmt->as.expression != NULL) free_expression(stmt->as.expression);
+    free(stmt);
+}
+
 void init_parser(const Token* tokenList, const int listLength) {
     Parser p = {tokenList, listLength, 0};
+    Program program;
+    program.count = 0;
+    program.statements = NULL;
     while (!is_at_end(&p)) {
-        Expression *tree = parse(&p);
-        if (tree != NULL) {
-            int result = evaluate(tree);
-            printf("%d", result);
-            free_expression(tree);
-        }
+        Statement *tree = parse(&p);
+        program.count++;
+        program.statements = realloc(program.statements, program.count * sizeof(Statement*));
+        program.statements[program.count - 1] = tree;
     }
+    for (int i = 0; i < program.count; i++) evaluate_statement(program.statements[i]);
+    for (int i = 0; i < program.count; i++) free_statement(program.statements[i]);
+    free(program.statements);
 }

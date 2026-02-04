@@ -7,6 +7,8 @@
 
 typedef struct Parser Parser;
 typedef struct Expression Expression;
+typedef struct Statement Statement;
+typedef struct Program Program;
 
 void print_list(const Token* tokenList, int listLength);
 void init_parser(const Token* tokenList, int listLength);

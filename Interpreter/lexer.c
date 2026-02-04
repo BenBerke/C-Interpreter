@@ -81,7 +81,7 @@ int main(void) {
                 i--;
                 free(current_word);
             }
-            else if (strchr("+-;*/", (unsigned char)string[i])) {
+            else if (strchr("+-;*/()", (unsigned char)string[i])) {
                 Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
                 tokenList = p;
                 switch (string[i]) {
@@ -90,6 +90,8 @@ int main(void) {
                     case ';': tokenList[listLength].type = SEMICOLON; break;
                     case '*': tokenList[listLength].type = STAR; break;
                     case '/': tokenList[listLength].type = SLASH; break;
+                    case '(': tokenList[listLength].type = LEFT_PAR; break;
+                    case ')': tokenList[listLength].type = RIGHT_PAR; break;
                     default: break;
                 }
                 tokenList[listLength].literal.s_value = NULL;
@@ -105,14 +107,15 @@ int main(void) {
         }
     }
 
-    print_list(tokenList, listLength);
+    //print_list(tokenList, listLength);
     init_parser(tokenList, listLength);
 
     cleanup:
     if (tokenList)
         for (int i = 0; i < listLength; i++)
             if (tokenList[i].type == VAR || tokenList[i].type == PRINT || tokenList[i].type == PLUS || tokenList[i].type == MINUS
-                || tokenList[i].type == SEMICOLON || tokenList[i].type == STAR || tokenList[i].type == SLASH)
+                || tokenList[i].type == SEMICOLON || tokenList[i].type == STAR || tokenList[i].type == SLASH ||
+                tokenList[i].type == LEFT_PAR || tokenList[i].type == RIGHT_PAR)
                 free(tokenList[i].literal.s_value);
 
     free(tokenList);

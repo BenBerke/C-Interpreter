@@ -7,6 +7,8 @@ typedef enum {
     STAR,
     SLASH,
     SEMICOLON,
+    LEFT_PAR,
+    RIGHT_PAR,
 
     NUMBER,
 
