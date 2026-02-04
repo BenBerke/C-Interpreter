@@ -7,4 +7,6 @@ add_executable(CLion_Projects lexer.c
         parser.c
         Headers/Token.h
         Headers/Parser.h
+        Headers/Expression.h
+        Headers/Literal.h
 )

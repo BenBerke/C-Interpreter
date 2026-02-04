@@ -4,9 +4,16 @@ typedef enum {
     EQL,
     PLUS,
     MINUS,
+    STAR,
+    SLASH,
+    SEMICOLON,
+
     NUMBER,
+
     PRINT,
     VAR,
+
+    EF,
 } Type;
 
 typedef struct {

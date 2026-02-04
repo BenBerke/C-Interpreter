@@ -5,6 +5,9 @@
 #include <string.h>
 #include "Token.h"
 
+typedef struct Parser Parser;
+typedef struct Expression Expression;
+
 void print_list(const Token* tokenList, int listLength);
 void init_parser(const Token* tokenList, int listLength);
 
