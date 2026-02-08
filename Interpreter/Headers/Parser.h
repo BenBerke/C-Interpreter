@@ -4,11 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "Token.h"
-
-typedef struct Parser Parser;
-typedef struct Expression Expression;
-typedef struct Statement Statement;
-typedef struct Program Program;
+#include "Ast.h"
 
 void print_list(const Token* tokenList, int listLength);
 void init_parser(const Token* tokenList, int listLength);

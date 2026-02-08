@@ -32,6 +32,7 @@ int main(void) {
     if (string) {
         string[len] = '\0';
         for (int i = 0; i < len; i++) {
+            if (isspace((unsigned char)string[i])) continue;
             if (isalpha((unsigned char)string[i])) {
                 char *current_word = NULL;
                 int word_len = 0;
@@ -42,22 +43,47 @@ int main(void) {
                     current_word[word_len++] = string[i++];
                     current_word[word_len] = '\0';;
                 }
-                if (current_word && !strcmp(current_word, "print")) {
+                if (!current_word) goto end;
+                if (!strcmp(current_word, "print")) {
                     Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
                     if (!p) { free(current_word); rc = 1; goto cleanup; }
                     tokenList = p;
+                    tokenList[listLength].name = "print";
                     tokenList[listLength].type = PRINT;
                     tokenList[listLength].literal.s_value = NULL;
                     listLength++;
                 }
-                else if (current_word && !strcmp(current_word, "variable")) {
+                else if (!strcmp(current_word, "int")) {
                     Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
                     if (!p) { free(current_word); rc = 1; goto cleanup; }
                     tokenList = p;
-                    tokenList[listLength].type = VAR;
+                    tokenList[listLength].name = "int";
+                    tokenList[listLength].type = INT;
                     tokenList[listLength].literal.s_value = NULL;
                     listLength++;
                 }
+                else if (!strcmp(current_word, "char")) {
+                    Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    tokenList = p;
+                    tokenList[listLength].name = "char";
+                    tokenList[listLength].type = CHAR;
+                    tokenList[listLength].literal.s_value = NULL;
+                    listLength++;
+                }
+                else {
+                    Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    tokenList = p;
+                    tokenList[listLength].name = current_word;
+                    tokenList[listLength].type = WORD;
+                    char *copy = strdup(current_word);
+                    tokenList[listLength].type = WORD;
+                    tokenList[listLength].name = copy;
+                    tokenList[listLength].literal.s_value = copy;
+                    listLength++;
+                }
+                end:
                 i--;
                 free(current_word);
             }
@@ -81,8 +107,20 @@ int main(void) {
                 i--;
                 free(current_word);
             }
-            else if (strchr("+-;*/()", (unsigned char)string[i])) {
+            else if (string[i] == '\'') {
+                if (i + 2 >= len || string[i + 2] != '\'') { rc = 1; goto cleanup; }
                 Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                if (!p) { rc = 1; goto cleanup; }
+                tokenList = p;
+                tokenList[listLength].type = CHAR_LIT;
+                tokenList[listLength].literal.c_value = string[i + 1];
+                listLength++;
+                i += 2;
+            }
+
+            else if (strchr("+-;*/()=", (unsigned char)string[i])) {
+                Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                if (!p) { rc = 1; goto cleanup; }
                 tokenList = p;
                 switch (string[i]) {
                     case '+': tokenList[listLength].type = PLUS; break;
@@ -92,6 +130,7 @@ int main(void) {
                     case '/': tokenList[listLength].type = SLASH; break;
                     case '(': tokenList[listLength].type = LEFT_PAR; break;
                     case ')': tokenList[listLength].type = RIGHT_PAR; break;
+                    case '=': tokenList[listLength].type = EQUAL; break;
                     default: break;
                 }
                 tokenList[listLength].literal.s_value = NULL;
@@ -107,16 +146,18 @@ int main(void) {
         }
     }
 
-    //print_list(tokenList, listLength);
     init_parser(tokenList, listLength);
+    //print_list(tokenList, listLength);
 
     cleanup:
     if (tokenList)
-        for (int i = 0; i < listLength; i++)
-            if (tokenList[i].type == VAR || tokenList[i].type == PRINT || tokenList[i].type == PLUS || tokenList[i].type == MINUS
+        for (int i = 0; i < listLength; i++) {
+            if (tokenList[i].type == INT || tokenList[i].type == PRINT || tokenList[i].type == PLUS || tokenList[i].type == MINUS
                 || tokenList[i].type == SEMICOLON || tokenList[i].type == STAR || tokenList[i].type == SLASH ||
-                tokenList[i].type == LEFT_PAR || tokenList[i].type == RIGHT_PAR)
+                tokenList[i].type == LEFT_PAR || tokenList[i].type == RIGHT_PAR || tokenList[i].type == EQUAL || tokenList[i].type == CHAR)
                 free(tokenList[i].literal.s_value);
+            if (tokenList[i].type == WORD) free(tokenList[i].name);
+        }
 
     free(tokenList);
     if (fptr) fclose(fptr);

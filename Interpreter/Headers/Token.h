@@ -1,7 +1,7 @@
 #ifndef TOKENS_H
 #define TOKENS_H
 typedef enum {
-    EQL,
+    EQUAL,
     PLUS,
     MINUS,
     STAR,
@@ -10,18 +10,23 @@ typedef enum {
     LEFT_PAR,
     RIGHT_PAR,
 
+    WORD,
     NUMBER,
+    CHAR_LIT,
 
     PRINT,
-    VAR,
+    INT,
+    CHAR,
 
     EF,
 } Type;
 
 typedef struct {
+    char* name;
     Type type;
     union {
         int i_value;
+        char c_value;
         char *s_value;
     } literal;
 } Token;

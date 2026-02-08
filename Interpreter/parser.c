@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "Headers/Parser.h"
 #include "Headers/Token.h"
+#include "Headers/Ast.h"
+#include "Headers/Interpreter.h"
+
+Expression* addition(Parser *p);
+Expression* multiplication(Parser *p);
 
 struct Parser {
     const Token *tokens;
@@ -10,42 +16,8 @@ struct Parser {
     int current;
 };
 
-typedef enum {
-    BINARY,
-    LITERAL
-} ExprType;
-
-typedef enum {
-    STMT_EXPRESSION,
-    STMT_PRINT
-} StmtType;
-
-struct Statement {
-    StmtType type;
-    union {
-        struct Expression* expression;
-    } as;
-};
-
-struct Expression {
-    ExprType type;
-    union {
-        struct {
-            struct Expression *left;
-            const Token* op;
-            struct Expression *right;
-        } binary;
-
-        struct {
-            const Token* value;
-        } literal;
-    } as;
-};
-
-struct Program {
-    Statement** statements;
-    int count;
-};
+Token** variables = NULL;
+int variableCount = 0;
 
 static const Token *peek(Parser *p)     { return &p->tokens[p->current]; }
 static const Token *previous(Parser *p) { return &p->tokens[p->current - 1]; }
@@ -55,7 +27,7 @@ static const Token *consume(Parser *p)  { if (!is_at_end(p)) p->current++; retur
 void print_list(const Token* tokenList, const int listLength) {
     for (int i = 0; i < listLength; i++) {
         if (tokenList[i].type == PRINT) printf("PRINT");
-        else if (tokenList[i].type == VAR) printf("VAR");
+        else if (tokenList[i].type == INT) printf("INT");
         else if (tokenList[i].type == NUMBER) printf("NUMBER(%d)", tokenList[i].literal.i_value);
         else if (tokenList[i].type == PLUS) printf("PLUS");
         else if (tokenList[i].type == MINUS) printf("MINUS");
@@ -65,12 +37,35 @@ void print_list(const Token* tokenList, const int listLength) {
         else if (tokenList[i].type == SLASH) printf("SLASH");
         else if (tokenList[i].type == LEFT_PAR) printf("LEFT PARENTHESIS");
         else if (tokenList[i].type == RIGHT_PAR) printf("RIGHT PARENTHESIS");
+        else if (tokenList[i].type == EQUAL) printf("EQUAL");
+        else if (tokenList[i].type == WORD) printf("WORD");
+        else if (tokenList[i].type == CHAR) printf("CHAR");
+        else if (tokenList[i].type == CHAR_LIT) printf("CHAR LIT(%c)", tokenList[i].literal.c_value);
         printf("\n");
     }
 }
 
 Expression* factor(Parser *p) {
     if (peek(p)->type == NUMBER) {
+        Expression *expr = malloc(sizeof(struct Expression));
+        expr->type = LITERAL;
+        expr->as.literal.value = consume(p);
+        return expr;
+    }
+    if (peek(p)->type == LEFT_PAR) {
+        consume(p);
+        Expression *expr = addition(p);
+        if (peek(p)->type == RIGHT_PAR) consume(p);
+        else perror("Expected '(' after expression");
+        return expr;
+    }
+    if (peek(p)->type == WORD) {
+        Expression *expr = malloc(sizeof(struct Expression));
+        expr->type = VAR_EXPR;
+        expr->as.variable.name = consume(p);
+        return expr;
+    }
+    if (peek(p)->type == CHAR_LIT) {
         Expression *expr = malloc(sizeof(struct Expression));
         expr->type = LITERAL;
         expr->as.literal.value = consume(p);
@@ -112,58 +107,61 @@ Expression* addition(Parser *p) {
 Statement* parse(Parser *p) {
     Statement* stmt = malloc(sizeof(struct Statement));
     Expression* expr = NULL;
-    if (peek(p)->type == PRINT) {
+    if (peek(p)->type == INT) {
+        consume(p);
+        if (peek(p)->type == WORD) {
+            stmt->type = STMT_CREATE_INT;
+            stmt->as.Assignment.name = consume(p);
+            if (peek(p)->type == EQUAL) {
+                consume(p);
+                stmt->as.Assignment.value = addition(p);
+            }
+            else perror("Initalizing variable requires a value");
+        }
+        else perror("Variable requires an expression");
+    }
+    else if (peek(p)->type == CHAR) {
+        consume(p);
+        if (peek(p)->type == WORD) {
+            stmt->type = STMT_CREATE_CHAR;
+            stmt->as.Assignment.name = consume(p);
+            if (peek(p)->type == EQUAL) {
+                consume(p);
+                if (peek(p)->type == CHAR_LIT) {
+                    Expression *expr = malloc(sizeof(struct Expression));
+                    expr->type = LITERAL;
+                    expr->as.literal.value = consume(p);
+                    stmt->as.Assignment.value = expr;
+                }
+                else perror("Initializing char variable requires a char literal");
+            }
+            else perror("Initializing variable requires a value");
+        }
+        else perror("Variable requires an expression");
+    }
+    else if (peek(p)->type == WORD && !is_at_end(p) && p->tokens[p->current + 1].type == EQUAL) {
+        stmt->type = STMT_ASSIGN;
+        stmt->as.Assignment.name = consume(p);
+        consume(p);
+        stmt->as.Assignment.value = addition(p);
+    }
+    else if (peek(p)->type == PRINT) {
         consume(p);
         expr = addition(p);
         stmt->type = STMT_PRINT;
-    } else {
+        stmt->as.expression = expr;
+    }
+    else {
         expr = addition(p);
         stmt->type = STMT_EXPRESSION;
+        stmt->as.expression = expr;
     }
-    stmt->as.expression = expr;
     if (peek(p)->type == SEMICOLON) consume(p);
-    else if (peek(p)->type != EF) perror("; expected after an expression");
+    else if (peek(p)->type != EF) {
+        perror("; expected after an expression");
+        consume(p);
+    }
     return stmt;
-}
-
-int evaluate_expression(Expression *expr) {
-    if (expr == NULL) return 0;
-    if (expr->type == LITERAL) return expr->as.literal.value->literal.i_value;
-    if (expr->type == BINARY) {
-        const int left = evaluate_expression(expr->as.binary.left);
-        const int right = evaluate_expression(expr->as.binary.right);
-        switch (expr->as.binary.op->type) {
-            case PLUS: return left + right;
-            case MINUS: return left - right;
-            case STAR:  return left * right;
-            case SLASH:  return left / right;
-            default: return 0;
-        }
-    }
-    return 0;
-}
-
-int evaluate_statement(const Statement *stmt) {
-    if (stmt == NULL) return 0;
-    if (stmt->type == STMT_EXPRESSION) return evaluate_expression(stmt->as.expression);
-    if (stmt->type == STMT_PRINT) printf("%d\n", evaluate_expression(stmt->as.expression));
-
-    return 0;
-}
-
-void free_expression(Expression *expr) {
-    if (expr == NULL) return;
-    if (expr->type == BINARY) {
-        free_expression(expr->as.binary.left);
-        free_expression(expr->as.binary.right);
-    }
-    free(expr);
-}
-
-void free_statement(Statement *stmt) {
-    if (stmt == NULL) return;
-    if (stmt->as.expression != NULL) free_expression(stmt->as.expression);
-    free(stmt);
 }
 
 void init_parser(const Token* tokenList, const int listLength) {
