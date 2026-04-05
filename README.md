@@ -1,8 +1,6 @@
 # C Interpreter
 
-A small interpreter written in **C** for a custom scripting language.
-
-I built this project to better understand how programming languages work at a lower level by implementing the core pieces myself: **lexing**, **parsing**, **AST construction**, and **interpreting**.
+A small interpreter written in **C**
 
 It currently supports:
 
@@ -19,23 +17,9 @@ It currently supports:
 - recursive function calls
 - `return`
 
-## Why I built it
-
-My goal was not just to use programming languages, but to understand what happens underneath them.
-
-Building this interpreter gave me hands-on experience with:
-
-- tokenising source code
-- recursive descent parsing
-- abstract syntax trees
-- expression evaluation
-- scope handling
-- function calls and recursion
-- runtime behaviour and error handling
-
 ## Example
 
-Here is a small example script that runs recursive Fibonacci logic:
+A small example script that runs recursive Fibonacci logic:
 
 ```txt
 int limit = 50;
