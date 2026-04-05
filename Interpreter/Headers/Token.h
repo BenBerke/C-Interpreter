@@ -9,6 +9,9 @@ typedef enum {
     SEMICOLON,
     LEFT_PAR,
     RIGHT_PAR,
+    COMMA,
+    LEFT_BRACE,
+    RIGHT_BRACE,
 
     WORD,
     NUMBER,
@@ -17,6 +20,8 @@ typedef enum {
     PRINT,
     INT,
     CHAR,
+
+    FUNCTION,
 
     EF,
 } Type;

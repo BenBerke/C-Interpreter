@@ -27,6 +27,7 @@ typedef enum {
     BINARY,
     LITERAL,
     VAR_EXPR,
+    CALL_EXPR,
 } ExprType;
 
 typedef enum {
@@ -35,6 +36,8 @@ typedef enum {
     STMT_ASSIGN,
     STMT_CREATE_INT,
     STMT_CREATE_CHAR,
+    STMT_FUNCTION,
+    STMT_RETURN,
 } StmtType;
 
 struct Statement {
@@ -63,7 +66,13 @@ struct Expression {
 
         struct {
             const Token* name;
-        }variable;
+        } variable;
+
+        struct {
+            const Token* callee;
+            struct Expression** arguments;
+            int arg_count;
+        } call;
     } as;
 };
 

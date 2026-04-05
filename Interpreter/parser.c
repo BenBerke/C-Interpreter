@@ -16,9 +16,6 @@ struct Parser {
     int current;
 };
 
-Token** variables = NULL;
-int variableCount = 0;
-
 static const Token *peek(Parser *p)     { return &p->tokens[p->current]; }
 static const Token *previous(Parser *p) { return &p->tokens[p->current - 1]; }
 static int is_at_end(Parser *p)         { return p->current >= p->count || p->tokens[p->current].type == EF;}
@@ -41,6 +38,7 @@ void print_list(const Token* tokenList, const int listLength) {
         else if (tokenList[i].type == WORD) printf("WORD");
         else if (tokenList[i].type == CHAR) printf("CHAR");
         else if (tokenList[i].type == CHAR_LIT) printf("CHAR LIT(%c)", tokenList[i].literal.c_value);
+        else if (tokenList[i].type == FUNCTION) printf("FUNCTION");
         printf("\n");
     }
 }
@@ -150,6 +148,10 @@ Statement* parse(Parser *p) {
         expr = addition(p);
         stmt->type = STMT_PRINT;
         stmt->as.expression = expr;
+    }
+    else if (peek(p)->type == FUNCTION) {
+        consume(p);
+
     }
     else {
         expr = addition(p);

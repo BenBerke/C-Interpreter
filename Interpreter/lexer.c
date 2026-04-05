@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -71,6 +70,15 @@ int main(void) {
                     tokenList[listLength].literal.s_value = NULL;
                     listLength++;
                 }
+                else if (!strcmp(current_word, "fn")) {
+                    Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
+                    if (!p) { free(current_word); rc = 1; goto cleanup; }
+                    tokenList = p;
+                    tokenList[listLength].name = "fn";
+                    tokenList[listLength].type = FUNCTION;
+                    tokenList[listLength].literal.s_value = NULL;
+                    listLength++;
+                }
                 else {
                     Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
                     if (!p) { free(current_word); rc = 1; goto cleanup; }
@@ -118,7 +126,7 @@ int main(void) {
                 i += 2;
             }
 
-            else if (strchr("+-;*/()=", (unsigned char)string[i])) {
+            else if (strchr("+-;*/()=,{}", (unsigned char)string[i])) {
                 Token *p = realloc(tokenList, (listLength + 1) * sizeof *tokenList);
                 if (!p) { rc = 1; goto cleanup; }
                 tokenList = p;
@@ -131,6 +139,9 @@ int main(void) {
                     case '(': tokenList[listLength].type = LEFT_PAR; break;
                     case ')': tokenList[listLength].type = RIGHT_PAR; break;
                     case '=': tokenList[listLength].type = EQUAL; break;
+                    case ',': tokenList[listLength].type = COMMA; break;
+                    case '{': tokenList[listLength].type = LEFT_BRACE; break;
+                    case '}': tokenList[listLength].type = RIGHT_BRACE; break;
                     default: break;
                 }
                 tokenList[listLength].literal.s_value = NULL;
@@ -147,14 +158,14 @@ int main(void) {
     }
 
     init_parser(tokenList, listLength);
-    //print_list(tokenList, listLength);
 
     cleanup:
     if (tokenList)
         for (int i = 0; i < listLength; i++) {
             if (tokenList[i].type == INT || tokenList[i].type == PRINT || tokenList[i].type == PLUS || tokenList[i].type == MINUS
                 || tokenList[i].type == SEMICOLON || tokenList[i].type == STAR || tokenList[i].type == SLASH ||
-                tokenList[i].type == LEFT_PAR || tokenList[i].type == RIGHT_PAR || tokenList[i].type == EQUAL || tokenList[i].type == CHAR)
+                tokenList[i].type == LEFT_PAR || tokenList[i].type == RIGHT_PAR || tokenList[i].type == EQUAL || tokenList[i].type == CHAR ||
+                tokenList[i].type == FUNCTION || tokenList[i].type == COMMA || tokenList[i].type == LEFT_BRACE || tokenList[i].type == RIGHT_BRACE)
                 free(tokenList[i].literal.s_value);
             if (tokenList[i].type == WORD) free(tokenList[i].name);
         }

@@ -8,11 +8,11 @@
 #include <string.h>
 #define MAX_SIZE 100
 
-int size = 0; // Current number of elements in the map
-char keys[MAX_SIZE][100]; // Array to store the keys
-int values[MAX_SIZE]; // Array to store the values
+int size = 0;
+char keys[100][256];
+int values[100];
 
-// Function to get the index of a key in the keys array
+
 int getIndex(char key[])
 {
     for (int i = 0; i < size; i++) {
