@@ -59,6 +59,9 @@ void print_list(const Token* tokenList, const int listLength) {
         else if (tokenList[i].type == LESS_EQUAL) printf("LESS_EQUAL");
         else if (tokenList[i].type == GREATER_EQUAL) printf("GREATER_EQUAL");
         else if (tokenList[i].type == GREATER_EQUAL) printf("EQUAL_EQUAL");
+        else if (tokenList[i].type == BOOL) printf("BOOL");
+        else if (tokenList[i].type == TRUE) printf("TRUE");
+        else if (tokenList[i].type == FALSE) printf("FALSE");
         printf("\n");
     }
 }
@@ -68,12 +71,15 @@ void print_list(const Token* tokenList, const int listLength) {
    ========================= */
 
 Expression* primary(Parser *p) {
-    if (peek(p)->type == NUMBER || peek(p)->type == CHAR_LIT) {
+    if (peek(p)->type == NUMBER ||
+        peek(p)->type == CHAR_LIT ||
+        peek(p)->type == TRUE ||
+        peek(p)->type == FALSE) {
         Expression *expr = malloc(sizeof(struct Expression));
         expr->type = LITERAL;
         expr->as.literal.value = consume(p);
         return expr;
-    }
+        }
 
     if (peek(p)->type == WORD) {
         Expression *expr = malloc(sizeof(struct Expression));
@@ -86,11 +92,11 @@ Expression* primary(Parser *p) {
         consume(p);
         Expression *expr = comparison(p);
         if (peek(p)->type == RIGHT_PAR) consume(p);
-        else perror("Expected ')' after expression");
+        else fprintf(stderr, "Expected ')' after expression\n");
         return expr;
     }
 
-    perror("Expected expression");
+    fprintf(stderr, "Expected expression\n");
     return NULL;
 }
 
@@ -346,6 +352,32 @@ Statement* parse(Parser *p) {
             stmt->as.Assignment.value = expr;
         } else {
             perror("Initializing char variable requires a char literal");
+            stmt->as.Assignment.value = NULL;
+        }
+
+        if (peek(p)->type == SEMICOLON) consume(p);
+        else perror("Expected ';' after variable declaration");
+        return stmt;
+    }
+
+    if (peek(p)->type == BOOL) {
+        stmt = malloc(sizeof(struct Statement));
+        consume(p);
+
+        if (peek(p)->type != WORD) perror("Variable requires a name");
+        stmt->type = STMT_CREATE_BOOL;
+        stmt->as.Assignment.name = consume(p);
+
+        if (peek(p)->type == EQUAL) consume(p);
+        else perror("Initializing variable requires a value");
+
+        if (peek(p)->type == TRUE || peek(p)->type == FALSE) {
+            Expression *expr = malloc(sizeof(struct Expression));
+            expr->type = LITERAL;
+            expr->as.literal.value = consume(p);
+            stmt->as.Assignment.value = expr;
+        } else {
+            perror("Initializing bool variable requires true or false");
             stmt->as.Assignment.value = NULL;
         }
 

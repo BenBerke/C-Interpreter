@@ -76,34 +76,49 @@ int main(void) {
             token.name = NULL;
             token.literal.s_value = NULL;
 
-            if (strcmp(current_word, "print") == 0) {
+            if (!strcmp(current_word, "print")) {
                 token.type = PRINT;
                 token.name = "print";
                 free(current_word);
             }
-            else if (strcmp(current_word, "int") == 0) {
+            else if (!strcmp(current_word, "int")) {
                 token.type = INT;
                 token.name = "int";
                 free(current_word);
             }
-            else if (strcmp(current_word, "char") == 0) {
+            else if (!strcmp(current_word, "char")) {
                 token.type = CHAR;
                 token.name = "char";
                 free(current_word);
             }
-            else if (strcmp(current_word, "function") == 0) {
+            else if (!strcmp(current_word, "function")) {
                 token.type = FUNCTION;
                 token.name = "function";
                 free(current_word);
             }
-            else if (strcmp(current_word, "return") == 0) {
+            else if (!strcmp(current_word, "return")) {
                 token.type = RETURN;
                 token.name = "return";
                 free(current_word);
             }
-            else if (strcmp(current_word, "if") == 0) {
+            else if (!strcmp(current_word, "if")) {
                 token.type = IF;
                 token.name = "if";
+                free(current_word);
+            }
+            else if (!strcmp(current_word, "bool")) {
+                token.type = BOOL;
+                token.name = "bool";
+                free(current_word);
+            }
+            else if (!strcmp(current_word, "true")) {
+                token.type = TRUE;
+                token.name = "true";
+                free(current_word);
+            }
+            else if (!strcmp(current_word, "false")) {
+                token.type = FALSE;
+                token.name = "false";
                 free(current_word);
             }
             else {

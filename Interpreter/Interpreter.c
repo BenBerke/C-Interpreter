@@ -13,6 +13,7 @@
 typedef struct {
     char keys[MAX_VARS][256];
     int values[MAX_VARS];
+    VarType types[MAX_VARS];
     int count;
 } Scope;
 
@@ -34,7 +35,6 @@ static int scope_count = 0;
 
 static FunctionDef functions[MAX_FUNCTIONS];
 static int function_count = 0;
-
 
 /* =========================
    Runtime / scope helpers
@@ -71,7 +71,7 @@ static int get_index_in_scope(int scope_index, const char* key) {
     return -1;
 }
 
-static void define_int(const char* name, int value) {
+static void define_variable(const char* name, VarType type, int value) {
     Scope* scope = &scopes[scope_count - 1];
     int index = get_index_in_scope(scope_count - 1, name);
 
@@ -83,13 +83,15 @@ static void define_int(const char* name, int value) {
 
         strcpy(scope->keys[scope->count], name);
         scope->values[scope->count] = value;
+        scope->types[scope->count] = type;
         scope->count++;
     } else {
         scope->values[index] = value;
+        scope->types[index] = type;
     }
 }
 
-static void assign_int(const char* name, int value) {
+static void assign_variable(const char* name, int value) {
     for (int i = scope_count - 1; i >= 0; i--) {
         int index = get_index_in_scope(i, name);
         if (index != -1) {
@@ -113,6 +115,21 @@ static int lookup_int(const char* name) {
     return 0;
 }
 
+static VarType lookup_type(const char* name) {
+    for (int i = scope_count - 1; i >= 0; i--) {
+        int index = get_index_in_scope(i, name);
+        if (index != -1) {
+            return scopes[i].types[index];
+        }
+    }
+
+    fprintf(stderr, "Undefined variable '%s'\n", name);
+    return TYPE_INT;
+}
+
+/* =========================
+   Function table helpers
+   ========================= */
 
 static FunctionDef* find_function(const char* name) {
     for (int i = 0; i < function_count; i++) {
@@ -141,15 +158,14 @@ static void define_function(const Statement* stmt) {
     fn->body_count = stmt->as.function.body_count;
 }
 
-
 /* =========================
    Forward declarations
    ========================= */
 
 static int eval_expr(Expression *expr);
+static void print_expression(Expression *expr);
 static EvalResult execute_statement_internal(const Statement *stmt);
 static EvalResult execute_statements(Statement** statements, int count);
-
 
 /* =========================
    Expression evaluation
@@ -164,6 +180,12 @@ static int eval_expr(Expression *expr) {
         }
         if (expr->as.literal.value->type == CHAR_LIT) {
             return expr->as.literal.value->literal.c_value;
+        }
+        if (expr->as.literal.value->type == TRUE) {
+            return 1;
+        }
+        if (expr->as.literal.value->type == FALSE) {
+            return 0;
         }
         return 0;
     }
@@ -199,7 +221,7 @@ static int eval_expr(Expression *expr) {
         push_scope();
 
         for (int i = 0; i < fn->param_count; i++) {
-            define_int(fn->params[i]->name, arg_values[i]);
+            define_variable(fn->params[i]->name, TYPE_INT, arg_values[i]);
         }
 
         EvalResult result = execute_statements(fn->body, fn->body_count);
@@ -231,6 +253,51 @@ static int eval_expr(Expression *expr) {
     return 0;
 }
 
+/* =========================
+   Printing
+   ========================= */
+
+static void print_expression(Expression *expr) {
+    if (expr == NULL) {
+        printf("0\n");
+        return;
+    }
+
+    if (expr->type == LITERAL) {
+        if (expr->as.literal.value->type == CHAR_LIT) {
+            printf("%c\n", expr->as.literal.value->literal.c_value);
+            return;
+        }
+        if (expr->as.literal.value->type == TRUE) {
+            printf("true\n");
+            return;
+        }
+        if (expr->as.literal.value->type == FALSE) {
+            printf("false\n");
+            return;
+        }
+        if (expr->as.literal.value->type == NUMBER) {
+            printf("%d\n", expr->as.literal.value->literal.i_value);
+            return;
+        }
+    }
+
+    if (expr->type == VAR_EXPR) {
+        VarType type = lookup_type(expr->as.variable.name->name);
+        int value = lookup_int(expr->as.variable.name->name);
+
+        if (type == TYPE_CHAR) {
+            printf("%c\n", value);
+        } else if (type == TYPE_BOOL) {
+            printf("%s\n", value ? "true" : "false");
+        } else {
+            printf("%d\n", value);
+        }
+        return;
+    }
+
+    printf("%d\n", eval_expr(expr));
+}
 
 /* =========================
    Statement execution
@@ -264,12 +331,13 @@ static EvalResult execute_statement_internal(const Statement *stmt) {
             return result;
 
         case STMT_PRINT:
-            printf("%d\n", eval_expr(stmt->as.expression));
+            print_expression(stmt->as.expression);
             return result;
 
         case STMT_CREATE_INT:
-            define_int(
+            define_variable(
                 stmt->as.Assignment.name->name,
+                TYPE_INT,
                 eval_expr(stmt->as.Assignment.value)
             );
             return result;
@@ -278,15 +346,16 @@ static EvalResult execute_statement_internal(const Statement *stmt) {
             if (stmt->as.Assignment.value != NULL &&
                 stmt->as.Assignment.value->type == LITERAL &&
                 stmt->as.Assignment.value->as.literal.value->type == CHAR_LIT) {
-                define_int(
+                define_variable(
                     stmt->as.Assignment.name->name,
+                    TYPE_CHAR,
                     stmt->as.Assignment.value->as.literal.value->literal.c_value
                 );
             }
             return result;
 
         case STMT_ASSIGN:
-            assign_int(
+            assign_variable(
                 stmt->as.Assignment.name->name,
                 eval_expr(stmt->as.Assignment.value)
             );
@@ -313,12 +382,19 @@ static EvalResult execute_statement_internal(const Statement *stmt) {
             }
             return result;
 
+        case STMT_CREATE_BOOL:
+            define_variable(
+                stmt->as.Assignment.name->name,
+                TYPE_BOOL,
+                eval_expr(stmt->as.Assignment.value)
+            );
+            return result;
+
         default:
             fprintf(stderr, "Unknown statement type\n");
             return result;
     }
 }
-
 
 /* =========================
    Public wrappers
@@ -331,7 +407,6 @@ int evaluate_expression(Expression *expr) {
 int evaluate_statement(const Statement *stmt) {
     return execute_statement_internal(stmt).value;
 }
-
 
 /* =========================
    Memory cleanup

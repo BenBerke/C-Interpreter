@@ -1,1 +1,16 @@
-print 'a';
+int value = 20;
+char label = 'P';
+
+function mod2(n) {
+    if (n < 2) return n;
+    return mod2(n - 2);
+}
+
+bool odd = false;
+if(mod2(value) == 0){
+    odd = true;
+}
+
+print label;
+print value;
+print odd;

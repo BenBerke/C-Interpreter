@@ -21,6 +21,8 @@ typedef enum {
     WORD,
     NUMBER,
     CHAR_LIT,
+    TRUE,
+    FALSE,
 
     PRINT,
     INT,

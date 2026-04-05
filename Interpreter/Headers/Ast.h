@@ -11,6 +11,7 @@ typedef enum {
     TYPE_INT,
     TYPE_STRING,
     TYPE_CHAR,
+    TYPE_BOOL,
 } VarType;
 
 typedef struct {
@@ -36,6 +37,7 @@ typedef enum {
     STMT_ASSIGN,
     STMT_CREATE_INT,
     STMT_CREATE_CHAR,
+    STMT_CREATE_BOOL,
     STMT_BLOCK,
     STMT_FUNCTION,
     STMT_RETURN,
