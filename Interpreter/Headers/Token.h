@@ -12,6 +12,11 @@ typedef enum {
     COMMA,
     LEFT_BRACE,
     RIGHT_BRACE,
+    LESS,
+    LESS_EQUAL,
+    GREATER,
+    GREATER_EQUAL,
+    EQUAL_EQUAL,
 
     WORD,
     NUMBER,
@@ -19,7 +24,10 @@ typedef enum {
 
     PRINT,
     INT,
+    BOOL,
     CHAR,
+    IF,
+    RETURN,
 
     FUNCTION,
 

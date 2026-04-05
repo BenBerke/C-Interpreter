@@ -36,18 +36,43 @@ typedef enum {
     STMT_ASSIGN,
     STMT_CREATE_INT,
     STMT_CREATE_CHAR,
+    STMT_BLOCK,
     STMT_FUNCTION,
     STMT_RETURN,
+    STMT_IF,
 } StmtType;
 
 struct Statement {
     StmtType type;
     union {
         struct Expression* expression;
+
         struct {
             const Token* name;
             struct Expression* value;
         } Assignment;
+
+        struct {
+            Statement** statements;
+            int count;
+        } block;
+
+        struct {
+            const Token* name;
+            const Token** params;
+            int param_count;
+            Statement** body;
+            int body_count;
+        } function;
+
+        struct {
+            struct Expression* value;
+        } return_stmt;
+
+        struct {
+            struct Expression* condition;
+            Statement* then_branch;
+        } if_stmt;
     } as;
 };
 
@@ -70,7 +95,7 @@ struct Expression {
 
         struct {
             const Token* callee;
-            struct Expression** arguments;
+            struct Expression** args;
             int arg_count;
         } call;
     } as;
